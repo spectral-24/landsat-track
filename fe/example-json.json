@@ -1,0 +1,8 @@
+{
+    "latlng": { "lat": 1, "lng": 1},
+    "cloud_coverage_result": 100,
+    "cloud_coverage_forecaast": 100,
+    "lead_time": 1,
+    "email": "string",
+    "phone": "string"
+}
