@@ -17,8 +17,9 @@ export default function CreateMarkerDialog({ onClose, onSave, position }) {
     }, [setParams]);
 
     const onDialogSave = React.useCallback(() => {
-        const P = Api.post('/create-registration', {
-            latlng: { lat: position.lat, lng: position.lng },
+        const P = Api.post('/registration', {
+            lat: position.lat, 
+            lng: position.lng,
             ...params
         });
         P.then(() => {

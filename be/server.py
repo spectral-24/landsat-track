@@ -7,12 +7,11 @@ import sqlite3
 from datetime import datetime, timedelta
 
 import urllib.request
-
+import static_api, aws_callback_api
 import sched,time
-
-scheduler = sched.scheduler(time.time, time.sleep)
-
-
+from wsr_2.latlng_to_wsr import getWSR2PathAndRow
+import os
+from notification.notificator import notify_user_about_landsat
 
 dbconn = sqlite3.connect(":memory:")
 dbcurs = dbconn.cursor()
@@ -28,7 +27,7 @@ except Exception as e:
 
 # TODO check existence of table
 dbcurs.execute(
-    "CREATE TABLE registrations (uuid char(40), lat float, lon float, path int, row int, hit date, notifications date[], emails varchar(4096), phones varchar(4096))"
+    "CREATE TABLE registrations (uuid char(40), lat float, lon float, path int, row int, hit date, email varchar(4096), phone varchar(4096))"
 )
 
 # These are the most recent datetimes (UTC) when they passed 001-001. Calibrated 2024-10-05
@@ -197,33 +196,27 @@ def parse_date(datestring):
 class RegistrationAPI:
     def on_post(self, req, resp):
         requestbody = req.get_media()
-        print(requestbody)
+        
         uuid = uuid4()
         uuidstr = str(uuid)
-        (lat, lon) = (requestbody["lat"], requestbody["lon"])
-        # TODO lat, lon to WRS-2 and calc time
-        coverage_threshold_result = json.dumps(requestbody["coverage_threshold_result"])
-        coverage_threshold_forecast = json.dumps(
-            requestbody["coverage_threshold_forecast"]
-        )
-        hit = json.dumps(requestbody["hit"]).replace('"', "")
-        try:
-            requestbody[notifications][0]
-        except:
-            requestbody[notifications] = []
-            requestbody[notifications][0] = query_schedule(landsat_schedule, path, row)
-            
-        notifications = json.dumps(requestbody["notifications"]).replace('"', "")
-        for d in notifications:
-            date = parse_date(d)
-            scheduler.enterabs(time.mktime(d.timetuple()), 0, send_email, (uuid))
-        emails = json.dumps(requestbody["emails"])
-        phones = json.dumps(requestbody["phones"])
+        (lat, lon) = (requestbody["lat"], requestbody["lng"])
+        
+        [path, row] = getWSR2PathAndRow(lat, lon)
+
+        cloud_coverage_result = json.dumps(requestbody["cloud_coverage_result"])
+        lead_time = json.dumps(requestbody["lead_time"])
+
+        #hittime TODO
+        hit = datetime.now()
+        email = json.dumps(requestbody["email"])
+        phone = json.dumps(requestbody["phone"])
         dbcurs.execute(
-            "INSERT INTO registrations(uuid, lat, lon, hit, notifications, emails, phones) VALUES ('{}', '{}', '{}', '{}', '{}', '{}', '{}')".format(
-                uuidstr, lat, lon, hit, notifications, emails, phones
+            "INSERT INTO registrations(uuid, lat, lon, path, row, hit, email, phone) VALUES ('{}', '{}', '{}', '{}', '{}', '{}', '{}', '{}')".format(
+                uuidstr, lat, lon, path, row, hit, email, phone
             )
         )
+
+        notify_user_about_landsat(email, phone, hit, lead_time)
         dbcurs.execute("SELECT * FROM registrations")
         print(dbcurs.fetchall())
         dbconn.commit()
@@ -240,22 +233,24 @@ class RegistrationAPI:
 
 # falcon.App instances are callable WSGI apps
 # in larger applications the app is created in a separate file
-app = falcon.App()
+app = falcon.App(middleware=falcon.CORSMiddleware(allow_origins='*', allow_credentials='*'))
 
 # Resources are represented by long-lived class instances
 things = ThingsResource()
 registration = RegistrationAPI()
-
+static_api = static_api.StaticAPI()
+aws_callback_api = aws_callback_api.AWSCallbackAPI(dbcurs)
 # things will handle all requests to the '/things' URL path
 app.add_route("/things", things)
 app.add_route("/calibrate", things)
 app.add_route("/acquisition", things)
 app.add_route("/registration", registration)
-app.add_route("/things", things)
+app.add_route('/static/{file}', static_api)
+app.add_route('/aws/callback', aws_callback_api)
 
-# if __name__ == '__main__':
-#     with make_server('', 8000, app) as httpd:
-#         print('Serving on port 8000...')
+if __name__ == '__main__':
+    with make_server('', 8000, app) as httpd:
+        print('Serving on port 8000...')
 
-#         # Serve until process is killed
-#         httpd.serve_forever()
+        # Serve until process is killed
+        httpd.serve_forever()

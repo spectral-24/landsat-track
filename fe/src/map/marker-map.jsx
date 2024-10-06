@@ -9,7 +9,7 @@ export default function MarkerMap() {
     const [currentSelected, setCurrentSelected] = React.useState();
 
     const onMapClick = React.useCallback(({ detail }) => {
-        // console.log(detail);
+        console.log(detail);
         setCurrentSelected(detail.latLng);
     }, []);
 

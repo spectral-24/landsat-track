@@ -25,6 +25,7 @@ export default {
     },
     post(path, body) {
         return fetch(apiUrl + path, {
+            method: 'POST',
             headers,
             body: JSON.stringify(body)
         }).then(responseToJson);
