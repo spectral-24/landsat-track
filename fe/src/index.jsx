@@ -1,14 +1,22 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import CssBaseline from '@mui/material/CssBaseline';
 import MarkerMap from './map/marker-map';
-import Container from '@mui/material/Container';
+import {
+    createBrowserRouter,
+    RouterProvider,
+  } from "react-router-dom";
 import './global-style.css';
+import ImageDisplay from './take/image-display';
 
+
+const router = createBrowserRouter([
+    { path: '/', element: <div style={{ height: '100vh', width: '100%' }}>
+        <MarkerMap />
+    </div>},
+    { path: '/take/:prefix', element: <ImageDisplay /> }
+])
 function App() {
-    return <div style={{ height: '100vh', width: '100%' }}>
-            <MarkerMap />
-        </div>;
+    return <RouterProvider router={router} />;
 }
 
 window.landsappInstall = function install() {
