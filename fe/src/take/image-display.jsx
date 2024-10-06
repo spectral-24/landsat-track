@@ -7,6 +7,7 @@ import api from '../api/api';
 import DownloadableTable from './downloadable-table';
 import Histogram from './histogram';
 import { ThreeByThreeGrid } from './three-by-three-grid';
+import { useSearchParams } from "react-router-dom";
 
 const STATIC_ASSETS_URL = `${process.env.API_URL}/static`;
 
@@ -17,6 +18,7 @@ function getJsonFile(file) {
 
 export default function ImageDisplay(){
     const params = useParams();
+    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
     const onGoBack = React.useCallback(() => {
@@ -28,7 +30,7 @@ export default function ImageDisplay(){
 
     useEffect(() => {
         if (params?.prefix) {
-            getJsonFile(params.prefix)
+            getJsonFile(`${params.prefix}_ST_stac`)
             .then((json) => {
                 const { geometry, properties } = json;
                 setTakeData({
@@ -37,7 +39,7 @@ export default function ImageDisplay(){
                 });
             });
 
-            getJsonFile(`${params.prefix}_mtl`)
+            getJsonFile(`${params.prefix}_MTL`)
             .then(json => {
                 const { LANDSAT_METADATA_FILE: fileContents } = json;
                 setLandsatMetadata(fileContents);
@@ -49,8 +51,10 @@ export default function ImageDisplay(){
         return redirect('/');
     }
 
+    const latlng = { lat: +searchParams.get('lat'), lng: +searchParams.get('lng') };
 
     const { prefix } = params;
+    const mainImage = `${STATIC_ASSETS_URL}/${prefix}_thumb_large.jpeg`;
     return <CssBaseline>
         <Container>
             <Button onClick={onGoBack}>
@@ -67,7 +71,7 @@ export default function ImageDisplay(){
                     {!takeData && <CircularProgress />}
                 </Container>
                 <Container>
-                    <img style={{ width: '100%' }} src={`${STATIC_ASSETS_URL}/${prefix}.jpg`} />
+                    <img style={{ width: '100%' }} src={mainImage} />
                 </Container>
             </Stack>
         </Container>
@@ -80,7 +84,7 @@ export default function ImageDisplay(){
                             .entries(takeData.properties)
                             .filter(([_, value]) => typeof value !== 'object')} />}
                     {!landsatMetadata && <CircularProgress />}
-                    {!!landsatMetadata && <ThreeByThreeGrid img={`${STATIC_ASSETS_URL}/${prefix}.jpg`} latLng={{ lat: 1, lng: 1}} />}
+                    {!!landsatMetadata && <ThreeByThreeGrid img={mainImage} latLng={latlng} />}
                 </Container>
                 <Container>
                     <Typography fontWeight={500}>Surface Reflectance and Surface Temperature Data</Typography>

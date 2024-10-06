@@ -206,8 +206,7 @@ class RegistrationAPI:
         cloud_coverage_result = json.dumps(requestbody["cloud_coverage_result"])
         lead_time = json.dumps(requestbody["lead_time"])
 
-        #hittime TODO
-        hit = datetime.now()
+        hit = query_schedule(landsat_schedule, path, row)
         email = json.dumps(requestbody["email"])
         phone = json.dumps(requestbody["phone"])
         dbcurs.execute(
